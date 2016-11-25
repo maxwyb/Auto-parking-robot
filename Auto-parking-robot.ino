@@ -2,7 +2,7 @@
 
 // execution parameters
 int rotation_speed = 150;
-int distance_threshold = 15;
+int distance_threshold = 30;
 int line_following_threshold = 50;  // milliseconds between each direction correction
 
 // QTR-8A Reflectance Sensor Array
@@ -51,6 +51,8 @@ long get_distance() {
   hc_duration = pulseIn(echo_pin, HIGH);
   hc_distance = hc_duration / 58;  // distance in centimeter with sound speed 344 m/s
 
+  Serial.print("get_distance called: ultrasonic_distance = ");
+  Serial.println(hc_distance);
   return hc_distance;
 }
 
@@ -140,7 +142,8 @@ void setup() {
 
   // calibrate IR sensors
   int i, j;
-  for (i = 0; i < 400; i++) {
+  Serial.println("setup: starting IR sensor calibration.");
+  for (i = 0; i < 1000; i++) {
     qtra.read(sensorValues);
     for (j = 0; j < NUM_SENSORS; j++) {
       if (sensorValues[j] > qtra_max) {
@@ -152,8 +155,10 @@ void setup() {
     }
   }
   qtra_mid = (qtra_max + qtra_min) / 2;
+  Serial.println("setup: finish IR sensor calibration.");
   
   digitalWrite(13, LOW);
+  delay(3000);
 }
 
 void loop() {
