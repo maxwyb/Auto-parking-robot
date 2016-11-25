@@ -1,7 +1,7 @@
 #include <QTRSensors.h>
 
 // execution parameters
-int rotation_speed = 150;
+int rotation_speed = 100;
 int distance_threshold = 30;
 int line_following_threshold = 50;  // milliseconds between each direction correction
 
@@ -69,11 +69,22 @@ void go_forward_with_speed(int motor_speed) {
 void make_turn(int left_speed, int right_speed) {
   analogWrite(PWM_2, left_speed);
   analogWrite(PWM_1, right_speed);
-  
-  digitalWrite(in1_1, HIGH);
-  digitalWrite(in1_2, LOW);
-  digitalWrite(in2_1, HIGH);
-  digitalWrite(in2_2, LOW);
+
+  if (left_speed == 0) {
+    digitalWrite(in2_1, LOW);
+    digitalWrite(in2_2, LOW);
+  } else {
+    digitalWrite(in2_1, HIGH);
+    digitalWrite(in2_2, LOW);
+  }
+
+  if (right_speed == 0) {
+    digitalWrite(in1_1, LOW);
+    digitalWrite(in1_2, LOW);
+  } else {
+    digitalWrite(in1_1, HIGH);
+    digitalWrite(in1_2, LOW);
+  }
 }
 
 void rotate_cw_with_speed(int motor_speed) {
@@ -95,18 +106,22 @@ void stop_motor() {
 
 void start_following_line() {  // following line until reaching a horizontal black line
   while (1) {
-    go_forward_with_speed(255);
+    int motor_speed = 150;
+    
+    go_forward_with_speed(motor_speed);
     delay(line_following_threshold);
     
     qtra.read(sensorValues);
     int left_mid = (sensorValues[0] + sensorValues[1] + sensorValues[2]) / 3,
       right_mid = (sensorValues[3] + sensorValues[4] + sensorValues[5]) / 3;
     if (left_mid > right_mid) {
-      make_turn(255, 150);  // turn right
+      make_turn(motor_speed, 0);  // turn right
+      Serial.println("--line following: turning right to offset.");
       delay(left_mid - right_mid);
     }
     if (left_mid < right_mid) {
-      make_turn(150, 255);  // turn left
+      make_turn(0, motor_speed);  // turn left
+      Serial.println("--line following: turning left to offset.");
       delay(right_mid - left_mid);
     }
 
