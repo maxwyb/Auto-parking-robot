@@ -1,9 +1,9 @@
 #include <QTRSensors.h>
 
 // execution parameters
-int rotation_speed = 255;
+int rotation_speed = 150;
 int distance_threshold = 15;
-int line_following_threshold = 50;
+int line_following_threshold = 50;  // milliseconds between each direction correction
 
 // QTR-8A Reflectance Sensor Array
 #define PWM_1 5  // left motor speed control
@@ -136,7 +136,7 @@ void setup() {
 
   // initialize distance sensor
   pinMode(trig_pin, OUTPUT);
-  pinMode(echo_pin, OUTPUT);
+  pinMode(echo_pin, INPUT);
 
   // calibrate IR sensors
   int i, j;
@@ -173,7 +173,7 @@ void loop() {
   while (1) {
     qtra.read(sensorValues);
     int black_count = 0, i;
-    for (i = 0; i < 6; i++) {
+    for (i = 0; i < NUM_SENSORS; i++) {
       if (sensorValues[i] > qtra_mid) {
         black_count++;
       }
@@ -182,11 +182,11 @@ void loop() {
       break;
     }
   }
-  flash_DS3(3);
+  flash_DS3(2);
 
   // go into the parking space by following direction line
   start_following_line();
-  flash_DS3(4);
+  flash_DS3(3);
 
   exit(0);
 }
