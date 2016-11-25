@@ -8,10 +8,10 @@ int line_following_threshold = 50;  // milliseconds between each direction corre
 // QTR-8A Reflectance Sensor Array
 #define PWM_1 5  // left motor speed control
 #define PWM_2 6  // right motor speed control
-#define in1_1 7  // upside wire of left motor
-#define in1_2 8  // downside wire of left motor
-#define in2_1 9  // upside wire of right motor
-#define in2_2 10  // downside wire of right motor
+#define in1_1 7  // upside wire of right motor
+#define in1_2 8  // downside wire of right motor
+#define in2_1 9  // upside wire of left motor
+#define in2_2 10  // downside wire of left motor
 
 #define NUM_SENSORS 6  
 #define NUM_SAMPLES_PER_SENSOR 4  
@@ -21,7 +21,7 @@ QTRSensorsAnalog qtra((unsigned char[]) {0, 1, 2, 3, 4, 5},
   NUM_SENSORS, NUM_SAMPLES_PER_SENSOR, EMITTER_PIN);
 unsigned int sensorValues[NUM_SENSORS];
 
-int qtra_mid = 0, qtra_max = 0, qtra_min = 0;
+int qtra_mid = 0, qtra_max = 0, qtra_min = 1000;
 
 // HC-SR04 Ultrasonic distance sensor
 #define trig_pin 13
@@ -67,8 +67,8 @@ void go_forward_with_speed(int motor_speed) {
 }
 
 void make_turn(int left_speed, int right_speed) {
-  analogWrite(PWM_1, left_speed);
-  analogWrite(PWM_2, right_speed);
+  analogWrite(PWM_2, left_speed);
+  analogWrite(PWM_1, right_speed);
   
   digitalWrite(in1_1, HIGH);
   digitalWrite(in1_2, LOW);
@@ -80,10 +80,10 @@ void rotate_cw_with_speed(int motor_speed) {
   analogWrite(PWM_1, motor_speed);
   analogWrite(PWM_2, motor_speed);
   
-  digitalWrite(in1_1, HIGH);
-  digitalWrite(in1_2, LOW);
-  digitalWrite(in2_1, LOW);
-  digitalWrite(in2_2, HIGH);
+  digitalWrite(in1_1, LOW);
+  digitalWrite(in1_2, HIGH);
+  digitalWrite(in2_1, HIGH);
+  digitalWrite(in2_2, LOW);
 }
 
 void stop_motor() {
@@ -111,6 +111,19 @@ void start_following_line() {  // following line until reaching a horizontal bla
     }
 
     if ((sensorValues[0] > qtra_mid) && (sensorValues[5] > qtra_mid)) {
+      Serial.println("--line following: detect horizontal black tape; stop.");
+      Serial.print("--current IR sensor values: ");
+      Serial.print(sensorValues[0]);
+      Serial.print(" ");
+      Serial.print(sensorValues[1]);
+      Serial.print(" ");
+      Serial.print(sensorValues[2]);
+      Serial.print(" ");
+      Serial.print(sensorValues[3]);
+      Serial.print(" ");
+      Serial.print(sensorValues[4]);
+      Serial.print(" ");
+      Serial.println(sensorValues[5]);
       stop_motor();
       return;
     }
@@ -118,6 +131,8 @@ void start_following_line() {  // following line until reaching a horizontal bla
 }
 
 void setup() {
+  pinMode(13, OUTPUT);
+  
   digitalWrite(13, HIGH);
   Serial.begin(9600);
   
@@ -143,7 +158,7 @@ void setup() {
   // calibrate IR sensors
   int i, j;
   Serial.println("setup: starting IR sensor calibration.");
-  for (i = 0; i < 1000; i++) {
+  for (i = 0; i < 2000; i++) {
     qtra.read(sensorValues);
     for (j = 0; j < NUM_SENSORS; j++) {
       if (sensorValues[j] > qtra_max) {
@@ -155,6 +170,12 @@ void setup() {
     }
   }
   qtra_mid = (qtra_max + qtra_min) / 2;
+  Serial.print("qtra_max = ");
+  Serial.print(qtra_max);
+  Serial.print("; qtra_min = ");
+  Serial.print(qtra_min);
+  Serial.print("; qtra_mid = ");
+  Serial.println(qtra_mid);
   Serial.println("setup: finish IR sensor calibration.");
   
   digitalWrite(13, LOW);
@@ -162,15 +183,20 @@ void setup() {
 }
 
 void loop() {
+  Serial.println("Start following line.");
   start_following_line();
+  Serial.println("reached horizontal black tape.");
   flash_DS3(1);
 
   // reaches a horizontal black line: check if parking space is empty
   int hc_distance = get_distance();
   while (hc_distance < distance_threshold) {
+    Serial.println("parking space not empty. Proceeding.");
     start_following_line();
     flash_DS3(1);
+    hc_distance = get_distance();
   }
+  Serial.println("parking space empty! Doing rotation.");
   flash_DS3(1);
   
   // reaches an empty parking space: turning right to face the space
@@ -190,8 +216,10 @@ void loop() {
   flash_DS3(2);
 
   // go into the parking space by following direction line
+  Serial.println("Rotation done. Going into parking space by following line.");
   start_following_line();
   flash_DS3(3);
 
+  Serial.println("Parking done! exit.");
   exit(0);
 }
