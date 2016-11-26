@@ -2,11 +2,11 @@
 
 // execution parameters
 int line_following_speed = 160;
-int rotation_speed = 160;  /* experimental threshold 160 on foam board */
+int rotation_speed = 190;  /* experimental threshold 180 on foam board to start rotating from at rest */
 int distance_threshold = 30;
 int line_following_threshold = 20;  // milliseconds between each direction correction
 
-// QTR-8A Reflectance Sensor Array
+// motors
 #define PWM_1 5  // left motor speed control
 #define PWM_2 6  // right motor speed control
 #define in1_1 7  // upside wire of right motor
@@ -14,6 +14,7 @@ int line_following_threshold = 20;  // milliseconds between each direction corre
 #define in2_1 9  // upside wire of left motor
 #define in2_2 10  // downside wire of left motor
 
+// QTR-8A Reflectance Sensor Array
 #define NUM_SENSORS 6  
 #define NUM_SAMPLES_PER_SENSOR 4  
 #define EMITTER_PIN QTR_NO_EMITTER_PIN  // emitter is controlled by digital pin 2
@@ -122,6 +123,7 @@ void stop_motor() {
 void start_following_line() {  // following line until reaching a horizontal black line
   // execution parameters
   double turning_delay_factor = 0.4;  // correct line following threshold: 0.5
+  int comp_offset = 250;
     
   go_forward_with_speed(line_following_speed);
   delay(line_following_threshold);
@@ -150,7 +152,6 @@ void start_following_line() {  // following line until reaching a horizontal bla
 
     
     // determine black tape to stop: approach 1
-    int comp_offset = 250;
     if ((sensorValues[0] > (qtra_mid + comp_offset)) && (sensorValues[5] > (qtra_mid + comp_offset))) {  
       Serial.println("--line following: detect horizontal black tape; stop.");
       Serial.print("--current IR sensor values: ");
@@ -159,7 +160,6 @@ void start_following_line() {  // following line until reaching a horizontal bla
       return;
     }
     
-
     /*
     // determine black tape to stop: approach 2
     int comparison_offset = 100;  // FIXIT: temporary solution
@@ -233,6 +233,10 @@ void setup() {
 }
 
 void loop() {
+  // execution parameters (for detecting tape during rotation)
+  int sensor_count_threshold = 5;
+  int comp_offset = 100;
+  
   Serial.println("Start following line.");
   start_following_line();
   Serial.println("reached horizontal black tape.");
@@ -251,15 +255,16 @@ void loop() {
   
   // reaches an empty parking space: turning right to face the space
   rotate_cw_with_speed(rotation_speed);
+  delay(500);
   while (1) {
     qtra.read(sensorValues);
     int black_count = 0, i;
     for (i = 0; i < NUM_SENSORS; i++) {
-      if (sensorValues[i] > qtra_mid) {
+      if (sensorValues[i] > (qtra_mid + comp_offset)) {
         black_count++;
       }
     }
-    if (black_count >= 5) {
+    if (black_count >= sensor_count_threshold) {
       Serial.println("--rotation: detect black tape.");
       Serial.print("--current IR sensor values: ");
       print_IR_sensor_values();
