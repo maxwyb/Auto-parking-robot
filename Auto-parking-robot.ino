@@ -148,16 +148,17 @@ void start_following_line() {  // following line until reaching a horizontal bla
       delay(delay_time);
     }
 
-    /*
+    
     // determine black tape to stop: approach 1
-    if ((sensorValues[0] > qtra_mid) && (sensorValues[5] > qtra_mid)) {  
+    int comp_offset = 250;
+    if ((sensorValues[0] > (qtra_mid + comp_offset)) && (sensorValues[5] > (qtra_mid + comp_offset))) {  
       Serial.println("--line following: detect horizontal black tape; stop.");
       Serial.print("--current IR sensor values: ");
       print_IR_sensor_values();
       stop_motor();
       return;
     }
-    */
+    
 
     /*
     // determine black tape to stop: approach 2
