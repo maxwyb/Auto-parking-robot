@@ -1,9 +1,10 @@
 #include <QTRSensors.h>
 
 // execution parameters
-int rotation_speed = 100;
+int line_following_speed = 200;
+int rotation_speed = 190;  /* experimental threshold 160 on foam board */
 int distance_threshold = 30;
-int line_following_threshold = 50;  // milliseconds between each direction correction
+int line_following_threshold = 20;  // milliseconds between each direction correction
 
 // QTR-8A Reflectance Sensor Array
 #define PWM_1 5  // left motor speed control
@@ -35,6 +36,20 @@ void flash_DS3(int num_of_times) {
     digitalWrite(13, LOW);
     delay(250);
   }
+}
+
+void print_IR_sensor_values() {
+    Serial.print(sensorValues[0]);
+    Serial.print(" ");
+    Serial.print(sensorValues[1]);
+    Serial.print(" ");
+    Serial.print(sensorValues[2]);
+    Serial.print(" ");
+    Serial.print(sensorValues[3]);
+    Serial.print(" ");
+    Serial.print(sensorValues[4]);
+    Serial.print(" ");
+    Serial.println(sensorValues[5]);
 }
 
 long get_distance() {
@@ -105,43 +120,58 @@ void stop_motor() {
 }
 
 void start_following_line() {  // following line until reaching a horizontal black line
-  while (1) {
-    int motor_speed = 150;
+  int motor_speed = line_following_speed; 
+  int turning_delay_factor = 0.8;
     
-    go_forward_with_speed(motor_speed);
-    delay(line_following_threshold);
+  go_forward_with_speed(motor_speed);
+  delay(line_following_threshold);
+  
+  while (1) {
     
     qtra.read(sensorValues);
     int left_mid = (sensorValues[0] + sensorValues[1] + sensorValues[2]) / 3,
-      right_mid = (sensorValues[3] + sensorValues[4] + sensorValues[5]) / 3;
+      //right_mid = (sensorValues[3] + sensorValues[4] + sensorValues[5]) / 3;
+      right_mid = (sensorValues[3] + sensorValues[4]) / 2;
     if (left_mid > right_mid) {
       make_turn(motor_speed, 0);  // turn right
       Serial.println("--line following: turning right to offset.");
-      delay(left_mid - right_mid);
+      Serial.print("--line following: offset time = ");
+      int temp_print = left_mid - right_mid;
+      Serial.println(temp_print);
+      delay(turning_delay_factor * (left_mid - right_mid));
     }
     if (left_mid < right_mid) {
       make_turn(0, motor_speed);  // turn left
       Serial.println("--line following: turning left to offset.");
-      delay(right_mid - left_mid);
+      delay(turning_delay_factor * (right_mid - left_mid));
     }
 
-    if ((sensorValues[0] > qtra_mid) && (sensorValues[5] > qtra_mid)) {
+    /*
+    if ((sensorValues[0] > qtra_mid) && (sensorValues[4] > qtra_mid)) {  // FIXIT: the 6th sensor value incorrect
       Serial.println("--line following: detect horizontal black tape; stop.");
       Serial.print("--current IR sensor values: ");
-      Serial.print(sensorValues[0]);
-      Serial.print(" ");
-      Serial.print(sensorValues[1]);
-      Serial.print(" ");
-      Serial.print(sensorValues[2]);
-      Serial.print(" ");
-      Serial.print(sensorValues[3]);
-      Serial.print(" ");
-      Serial.print(sensorValues[4]);
-      Serial.print(" ");
-      Serial.println(sensorValues[5]);
+      print_IR_sensor_values();
       stop_motor();
       return;
     }
+    */
+
+    /*
+    int comparison_offset = 100;  // FIXIT: temporary solution
+    int black_count = 0, i;
+    for (i = 0; i < NUM_SENSORS; i++) {
+      if (sensorValues[i] > (qtra_mid + comparison_offset)) {
+        black_count++;
+      }
+    }
+    if (black_count >= 5) {
+      Serial.println("--line following: detect horizontal black tape; stop.");
+      Serial.print("--current IR sensor values: ");
+      print_IR_sensor_values();
+      stop_motor();
+      return;
+    }
+    */
   }
 }
 
@@ -175,7 +205,7 @@ void setup() {
   Serial.println("setup: starting IR sensor calibration.");
   for (i = 0; i < 2000; i++) {
     qtra.read(sensorValues);
-    for (j = 0; j < NUM_SENSORS; j++) {
+    for (j = 0; j < 5; j++) {  // FIXIT: the 6th sensor value incorrect
       if (sensorValues[j] > qtra_max) {
         qtra_max = sensorValues[j];
       }
@@ -224,7 +254,10 @@ void loop() {
         black_count++;
       }
     }
-    if (black_count >= 3) {
+    if (black_count >= 5) {
+      Serial.println("--rotation: detect black tape.");
+      Serial.print("--current IR sensor values: ");
+      print_IR_sensor_values();
       break;
     }
   }
