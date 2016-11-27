@@ -2,7 +2,7 @@
 
 // execution parameters
 int line_following_speed = 160;
-int rotation_speed = 190;  /* experimental threshold 180 on foam board to start rotating from at rest */
+int rotation_speed = 180;  /* experimental threshold 180 on foam board to start rotating from at rest */
 int distance_threshold = 30;
 int line_following_threshold = 20;  // milliseconds between each direction correction
 
@@ -122,8 +122,13 @@ void stop_motor() {
 
 void start_following_line() {  // following line until reaching a horizontal black line
   // execution parameters
+  /*
+   * pairs of usually correct line following: 
+   * turning_delay_factor = 0.4; comp_offset = 250
+   * turning_delay_factor = 0.4; comp_offset = 285
+   */
   double turning_delay_factor = 0.4;  // correct line following threshold: 0.5
-  int comp_offset = 250;
+  int comp_offset = 250;  
     
   go_forward_with_speed(line_following_speed);
   delay(line_following_threshold);
@@ -229,29 +234,38 @@ void setup() {
   Serial.println("setup: finish IR sensor calibration.");
   
   digitalWrite(13, LOW);
+  flash_DS2(10);
   delay(3000);
 }
 
 void loop() {
+  flash_DS2(1);
   // execution parameters (for detecting tape during rotation)
+  /* 
+   * pairs of sually correct rotation detection:
+   * parking space 1, RV6 lounge sunny: sensor_count_threshold = 5, comp_offset = 100
+   * (testing) sensor_count_threshold = 5, comp_offset = 75
+   */
   int sensor_count_threshold = 5;
   int comp_offset = 100;
   
   Serial.println("Start following line.");
   start_following_line();
   Serial.println("reached horizontal black tape.");
-  flash_DS2(1);
+  //flash_DS2(1);
 
   // reaches a horizontal black line: check if parking space is empty
   int hc_distance = get_distance();
   while (hc_distance < distance_threshold) {
     Serial.println("parking space not empty. Proceeding.");
+    delay(2000);
     start_following_line();
-    flash_DS2(1);
+    //flash_DS2(1);
     hc_distance = get_distance();
   }
   Serial.println("parking space empty! Doing rotation.");
-  flash_DS2(1);
+  //flash_DS2(1);
+  delay(2000);
   
   // reaches an empty parking space: turning right to face the space
   rotate_cw_with_speed(rotation_speed);
@@ -271,13 +285,16 @@ void loop() {
       break;
     }
   }
-  flash_DS2(2);
+  stop_motor();
+  //flash_DS2(2);
+  delay(2000);
 
   // go into the parking space by following direction line
   Serial.println("Rotation done. Going into parking space by following line.");
   start_following_line();
-  flash_DS2(3);
 
   Serial.println("Parking done! exit.");
+  flash_DS2(3);
   exit(0);
 }
+
