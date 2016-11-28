@@ -1,10 +1,17 @@
 #include <QTRSensors.h>
 
 // execution parameters
-int line_following_speed = 160;
-int rotation_speed = 180;  /* experimental threshold 180 on foam board to start rotating from at rest */
+/* (video #1) line_following_speed = 160, rotation_speed = 180
+ * (video #2) line_following_speed = 170, rotation_speed = 190
+ * (video #3.1) line_following_speed = 180, rotation_speed = 250, line_following_threshold = 20
+ * testing: line_following_threshold = 50 (too low)
+ * (video #3.2) line_following_speed = 170, rotation_speed = 250, line_following_threshold = 80
+ * (video #3.3) line_following_speed = 170, rotation_speed = 250, line_following_threshold = 300
+ */ 
+int line_following_speed = 170;
+int rotation_speed = 190;  /* experimental threshold 180 on foam board to start rotating from at rest */
 int distance_threshold = 30;
-int line_following_threshold = 20;  // milliseconds between each direction correction
+int line_following_threshold = 80;  // milliseconds between each direction correction
 
 // motors
 #define PWM_1 5  // left motor speed control
@@ -126,8 +133,9 @@ void start_following_line() {  // following line until reaching a horizontal bla
    * pairs of usually correct line following: 
    * turning_delay_factor = 0.4; comp_offset = 250
    * turning_delay_factor = 0.4; comp_offset = 285
+   * (video #1-3) turning_delay_factor = 0.2; comp_offset = 250
    */
-  double turning_delay_factor = 0.4;  // correct line following threshold: 0.5
+  double turning_delay_factor = 0.2;  // correct line following threshold: 0.5
   int comp_offset = 250;  
     
   go_forward_with_speed(line_following_speed);
@@ -234,7 +242,7 @@ void setup() {
   Serial.println("setup: finish IR sensor calibration.");
   
   digitalWrite(13, LOW);
-  flash_DS2(10);
+  //flash_DS2(10);
   delay(3000);
 }
 
@@ -242,12 +250,13 @@ void loop() {
   flash_DS2(1);
   // execution parameters (for detecting tape during rotation)
   /* 
-   * pairs of sually correct rotation detection:
+   * pairs of usually correct rotation detection:
    * parking space 1, RV6 lounge sunny: sensor_count_threshold = 5, comp_offset = 100
    * (testing) sensor_count_threshold = 5, comp_offset = 75
+   * (video #1-3) sensor_count_threshold = 3, comp_offset = 50
    */
-  int sensor_count_threshold = 5;
-  int comp_offset = 100;
+  int sensor_count_threshold = 3;
+  int comp_offset = 50;
   
   Serial.println("Start following line.");
   start_following_line();
